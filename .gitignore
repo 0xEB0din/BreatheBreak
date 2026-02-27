@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -5,7 +6,24 @@ dist/
 build/
 .eggs/
 *.egg
+
+# Virtual environments
 .venv/
 venv/
+
+# Config (local)
 .env
+
+# macOS
 .DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/

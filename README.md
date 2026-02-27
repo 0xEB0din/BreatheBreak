@@ -1,19 +1,33 @@
 # BreatheBreak
-BreatheBreak is a lightweight, user-friendly macOS menu bar app designed to help you maintain a healthy work-life balance. With an intuitive interface and minimalistic design, BreatheBreak sends you gentle reminders every 20 minutes to take a short break from your screen, stretch, and relax.
 
-Key features of BreatheBreak include:
+A lightweight macOS menu bar app that reminds you to take regular breaks from your screen.
 
-Easy Setup: Quickly set up BreatheBreak on your macOS system with minimal installation steps, allowing you to start using the app in no time.
+## What it does
 
-Customizable Reminders: Personalize reminder intervals to match your work habits and preferences, ensuring that the app works seamlessly with your routine.
+BreatheBreak sits in your menu bar and sends you a notification every 20 minutes (by default) to step away, stretch, and give your eyes a rest. You can adjust the interval to whatever works for you, and start or stop reminders whenever you want.
 
-Discreet Notifications: Receive non-intrusive notifications that gently remind you to take breaks without interrupting your workflow.
+## Getting started
 
-System Tray Integration: Easily access the app's start, stop, and quit options directly from the macOS menu bar, providing a streamlined user experience.
+Requires **Python 3** and **macOS**.
 
-Automatic Startup: Optionally configure BreatheBreak to launch automatically when your system starts, ensuring that the app is always running when you need it.
+```bash
+pip install -r requirements.txt
+python break_reminder.py
+```
 
-By using BreatheBreak, you can develop healthier work habits, reduce eye strain, and improve your overall well-being, all while maintaining focus and productivity.
+The app appears in your menu bar. Click it to start/stop reminders or change the interval.
 
-## run the app
-`python break_reminder_menubar.py`
+## Features
+
+- Runs quietly in the macOS menu bar
+- Configurable reminder interval
+- Native macOS notifications
+- Start and stop with one click
+
+## Why I built this
+
+I kept losing track of time during long coding sessions and my eyes were paying for it. I wanted something dead simple that does one job -- nudge me to step away every once in a while. No bloat, no distractions, just a gentle reminder.
+
+## License
+
+MIT

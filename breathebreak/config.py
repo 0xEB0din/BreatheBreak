@@ -20,7 +20,7 @@ STATS_FILE = CONFIG_DIR / "stats.json"
 DEFAULT_INTERVAL = 20  # minutes — matches the 20-20-20 rule
 DEFAULT_BREAK_DURATION = 20  # seconds
 MIN_INTERVAL = 1
-MAX_INTERVAL = 180
+MAX_INTERVAL = 480
 
 
 @dataclass

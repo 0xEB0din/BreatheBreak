@@ -1,16 +1,19 @@
 """Local-only session statistics.
 
-Tracks daily break compliance in a JSON file at
+Tracks daily break compliance and focus time in a JSON file at
 ~/.config/breathebreak/stats.json. No data ever leaves the machine.
 File permissions are restricted to owner-only (0600).
 """
 
 import json
+import logging
 import os
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 from breathebreak.config import CONFIG_DIR, STATS_FILE
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,6 +25,7 @@ class DailyStats:
     breaks_acknowledged: int = 0
     total_break_seconds: int = 0
     sessions_started: int = 0
+    focus_seconds: int = 0
 
 
 @dataclass
@@ -29,6 +33,7 @@ class StatsStore:
     """Manages per-day break statistics with JSON persistence."""
 
     days: dict = field(default_factory=dict)
+    _focus_start: datetime | None = field(default=None, repr=False)
 
     # -- recording --
 
@@ -46,6 +51,21 @@ class StatsStore:
         self._today().sessions_started += 1
         self._persist()
 
+    def start_focus_session(self) -> None:
+        """Mark the beginning of a focus session for time tracking."""
+        self._focus_start = datetime.now()
+        log.debug("Focus session started at %s", self._focus_start.isoformat())
+
+    def end_focus_session(self) -> None:
+        """End the current focus session and log elapsed time."""
+        if self._focus_start is None:
+            return
+        elapsed = int((datetime.now() - self._focus_start).total_seconds())
+        self._today().focus_seconds += elapsed
+        self._focus_start = None
+        self._persist()
+        log.debug("Focus session ended, +%ds", elapsed)
+
     # -- reporting --
 
     def summary(self, last_n_days: int = 7) -> str:
@@ -56,14 +76,19 @@ class StatsStore:
 
         reminders = sum(self.days[k].reminders_sent for k in keys)
         breaks = sum(self.days[k].breaks_acknowledged for k in keys)
+        focus = sum(self.days[k].focus_seconds for k in keys)
         rate = (breaks / reminders * 100) if reminders else 0
 
-        return (
-            f"Last {len(keys)} day(s):\n"
-            f"  Reminders sent: {reminders}\n"
-            f"  Breaks taken:   {breaks}\n"
-            f"  Compliance:     {rate:.0f}%"
-        )
+        focus_h, focus_m = divmod(focus // 60, 60)
+
+        lines = [
+            f"Last {len(keys)} day(s):",
+            f"  Reminders sent: {reminders}",
+            f"  Breaks taken:   {breaks}",
+            f"  Compliance:     {rate:.0f}%",
+            f"  Focus time:     {focus_h}h {focus_m}m",
+        ]
+        return "\n".join(lines)
 
     # -- persistence --
 

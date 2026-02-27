@@ -11,6 +11,7 @@ test:
 
 lint:
 	ruff check breathebreak/ tests/
+	ruff format --check breathebreak/ tests/
 
 format:
 	ruff format breathebreak/ tests/

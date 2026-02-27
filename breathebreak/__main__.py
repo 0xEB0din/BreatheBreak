@@ -1,6 +1,11 @@
-"""Allow running with: python -m breathebreak"""
+"""Entry point for `python -m breathebreak`."""
+
+import sys
 
 from breathebreak.app import main
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)

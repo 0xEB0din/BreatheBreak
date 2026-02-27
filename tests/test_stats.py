@@ -1,6 +1,6 @@
 """Tests for session statistics tracking."""
 
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from breathebreak.stats import DailyStats, StatsStore
 
@@ -39,6 +39,39 @@ class TestStatsRecording:
         assert store.days[today].reminders_sent == 5
 
 
+class TestFocusTracking:
+    def _noop_store(self):
+        store = StatsStore()
+        store._persist = lambda: None
+        return store
+
+    def test_focus_session_tracks_time(self):
+        store = self._noop_store()
+        store.start_focus_session()
+        # Backdate start to simulate 25 minutes of work
+        store._focus_start = datetime.now() - timedelta(minutes=25)
+        store.end_focus_session()
+        today = date.today().isoformat()
+        assert store.days[today].focus_seconds >= 24 * 60
+
+    def test_end_without_start_is_noop(self):
+        store = self._noop_store()
+        store.end_focus_session()
+        today = date.today().isoformat()
+        assert today not in store.days
+
+    def test_multiple_sessions_accumulate(self):
+        store = self._noop_store()
+        store.start_focus_session()
+        store._focus_start = datetime.now() - timedelta(minutes=10)
+        store.end_focus_session()
+        store.start_focus_session()
+        store._focus_start = datetime.now() - timedelta(minutes=15)
+        store.end_focus_session()
+        today = date.today().isoformat()
+        assert store.days[today].focus_seconds >= 24 * 60
+
+
 class TestStatsSummary:
     def test_empty_store(self):
         store = StatsStore()
@@ -61,6 +94,14 @@ class TestStatsSummary:
         store = StatsStore(days={today: DailyStats(date=today, reminders_sent=0)})
         summary = store.summary()
         assert "0%" in summary
+
+    def test_summary_includes_focus_time(self):
+        today = date.today().isoformat()
+        store = StatsStore(
+            days={today: DailyStats(date=today, focus_seconds=5400)}  # 1h 30m
+        )
+        summary = store.summary()
+        assert "1h 30m" in summary
 
 
 class TestStatsPersistence:

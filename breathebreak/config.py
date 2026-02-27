@@ -1,71 +1,94 @@
-import json
-import logging
+"""Configuration management — load, validate, and persist user preferences.
+
+Config lives at ~/.config/breathebreak/config.yaml and is created on first
+interval change. All values are bounds-checked before use. File permissions
+are restricted to owner-only (0600) to prevent other local users from
+tampering with app behavior.
+"""
+
 import os
-import stat
+from dataclasses import dataclass
+from pathlib import Path
 
-logger = logging.getLogger(__name__)
+import yaml
 
-_DEFAULTS = {
-    "interval_minutes": 20,
-    "sound": True,
-}
+CONFIG_DIR = Path.home() / ".config" / "breathebreak"
+CONFIG_FILE = CONFIG_DIR / "config.yaml"
+STATS_FILE = CONFIG_DIR / "stats.json"
 
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", "breathebreak")
-CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+# Boundaries
+DEFAULT_INTERVAL = 20  # minutes — matches the 20-20-20 rule
+DEFAULT_BREAK_DURATION = 20  # seconds
+MIN_INTERVAL = 1
+MAX_INTERVAL = 480
 
 
+@dataclass
 class Config:
-    """Persistent configuration backed by a JSON file.
+    """Validated application configuration."""
 
-    Config lives at ~/.config/breathebreak/config.json with 0600 permissions
-    to prevent other local users from reading or modifying settings.
-    """
+    interval_minutes: int = DEFAULT_INTERVAL
+    break_duration_seconds: int = DEFAULT_BREAK_DURATION
+    sound_enabled: bool = True
+    track_stats: bool = True
+    notification_title: str = "BreatheBreak"
 
-    def __init__(self, path=None):
-        self._path = path or CONFIG_FILE
-        self._data = dict(_DEFAULTS)
-        self._load()
+    @classmethod
+    def load(cls) -> "Config":
+        """Load config from YAML file, falling back to safe defaults."""
+        if not CONFIG_FILE.exists():
+            return cls()
 
-    @property
-    def data_dir(self):
-        return os.path.dirname(self._path)
-
-    @property
-    def interval(self):
-        return self._data.get("interval_minutes", _DEFAULTS["interval_minutes"])
-
-    @interval.setter
-    def interval(self, minutes):
-        self._data["interval_minutes"] = minutes
-
-    @property
-    def sound(self):
-        return self._data.get("sound", _DEFAULTS["sound"])
-
-    def save(self):
-        self._ensure_dir()
-        with open(self._path, "w") as f:
-            json.dump(self._data, f, indent=2)
-        self._lock_permissions()
-        logger.debug("Config saved to %s", self._path)
-
-    def _load(self):
-        if not os.path.isfile(self._path):
-            return
         try:
-            with open(self._path) as f:
-                stored = json.load(f)
-            self._data.update(stored)
-            logger.debug("Config loaded from %s", self._path)
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.warning("Could not load config (%s), using defaults", exc)
+            with open(CONFIG_FILE) as f:
+                raw = yaml.safe_load(f) or {}
+        except (yaml.YAMLError, OSError):
+            # Corrupt or unreadable config — don't crash, just use defaults.
+            return cls()
 
-    def _ensure_dir(self):
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        return cls(
+            interval_minutes=cls._clamp_interval(raw.get("interval_minutes", DEFAULT_INTERVAL)),
+            break_duration_seconds=_clamp(
+                raw.get("break_duration_seconds", DEFAULT_BREAK_DURATION), 5, 300
+            ),
+            sound_enabled=bool(raw.get("sound_enabled", True)),
+            track_stats=bool(raw.get("track_stats", True)),
+            notification_title=str(raw.get("notification_title", "BreatheBreak"))[:64],
+        )
 
-    def _lock_permissions(self):
-        """Restrict config file to owner-only read/write (0600)."""
+    def save(self) -> None:
+        """Write current config to disk with restricted permissions.
+
+        Uses atomic write (tmp + rename) to avoid corruption if the process
+        is killed mid-write.
+        """
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        data = {
+            "interval_minutes": self.interval_minutes,
+            "break_duration_seconds": self.break_duration_seconds,
+            "sound_enabled": self.sound_enabled,
+            "track_stats": self.track_stats,
+            "notification_title": self.notification_title,
+        }
+        tmp = CONFIG_FILE.with_suffix(".tmp")
+        with open(tmp, "w") as f:
+            yaml.dump(data, f, default_flow_style=False)
+        os.chmod(tmp, 0o600)
+        tmp.replace(CONFIG_FILE)
+
+    @staticmethod
+    def _clamp_interval(value) -> int:
+        """Validate and clamp an interval value to safe bounds."""
         try:
-            os.chmod(self._path, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass  # non-critical on filesystems that ignore POSIX permissions
+            minutes = int(value)
+        except (ValueError, TypeError):
+            return DEFAULT_INTERVAL
+        return max(MIN_INTERVAL, min(MAX_INTERVAL, minutes))
+
+
+def _clamp(value, lo: int, hi: int) -> int:
+    """Clamp a numeric value to [lo, hi], falling back to lo on bad input."""
+    try:
+        return max(lo, min(hi, int(value)))
+    except (ValueError, TypeError):
+        return lo

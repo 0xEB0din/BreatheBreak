@@ -1,0 +1,18 @@
+# BreatheBreak configuration
+# Copy to ~/.config/breathebreak/config.yaml
+
+# How often to remind you to take a break (minutes).
+# Default follows the 20-20-20 rule.
+interval_minutes: 20
+
+# Recommended break duration (seconds).
+break_duration_seconds: 20
+
+# Play a sound with notifications.
+sound_enabled: true
+
+# Track break statistics locally (~/.config/breathebreak/stats.json).
+track_stats: true
+
+# Title shown in notifications.
+notification_title: "BreatheBreak"

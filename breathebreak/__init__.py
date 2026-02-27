@@ -1,3 +1,3 @@
-"""BreatheBreak — a macOS menu bar app for screen break reminders."""
+"""BreatheBreak — macOS menu bar break reminder for developers."""
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

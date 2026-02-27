@@ -7,5 +7,11 @@ build/
 *.egg
 .venv/
 venv/
+env/
 .env
 .DS_Store
+.ruff_cache/
+.pytest_cache/
+*.swp
+*.swo
+*~
